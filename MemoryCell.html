@@ -1,0 +1,396 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MemoryCell</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Kanit:wght@400;700&family=Raleway:wght@400;700&display=swap');
+
+    body {
+      font-family: 'Kanit', sans-serif;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      flex-direction: column;
+      height: 100vh;
+      margin: 0;
+      background-color: #111111;
+      color: #ffffff;
+    }
+
+    h1 {
+      margin-bottom: 20px;
+      font-size: 8vw;
+      background: linear-gradient(90deg, #00ffff, #ff00ff);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      text-shadow: 0 0 15px rgba(255, 255, 255, 0.1);
+    }
+
+    #game-board {
+      display: grid;
+      gap: 10px;
+      justify-content: center;
+      margin-bottom: 20px;
+    }
+
+    .card {
+      background-color: #1c1c1c;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      font-size: 2rem;
+      cursor: pointer;
+      transition: background-color 0.3s, font-size 0.3s;
+      user-select: none;
+      color: white;
+      border-radius: 10px;
+      box-shadow: 10px 10px 20px #0b0b0b, -10px -10px 20px #2b2b2b;
+    }
+
+    .card.flipped {
+      background-color: #6647FF;
+      color: white;
+    }
+
+    #start-button, #back-button {
+      padding: 10px 20px;
+      background: linear-gradient(135deg, #00ff00, #00ffff);
+      color: #111111;
+      border: none;
+      border-radius: 30px;
+      cursor: pointer;
+      font-size: 7vw;
+      margin-top: 20px;
+      box-shadow: 8px 8px 16px #0d0d0d, -8px -8px 16px #2a2a2a;
+      transition: background-color 0.3s ease, box-shadow 0.3s ease;
+    }
+
+    #start-button:hover, #back-button:hover {
+      background: linear-gradient(135deg, #ff00ff, #00ffff);
+      box-shadow: 5px 5px 15px #0d0d0d, -5px -5px 15px #3a3a3a;
+    }
+
+    #timer, #level-info, #qi-info {
+      font-size: 7vw;
+      margin-bottom: 20px;
+    }
+
+    #back-button {
+      background: linear-gradient(135deg, #007bff, #00ffff);
+    }
+
+    #back-button:hover {
+      background: linear-gradient(135deg, #0056b3, #00ffff);
+    }
+
+    /* Style for the message box */
+    .message {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      background-color: rgba(0, 0, 0, 0.8);
+      padding: 20px;
+      border-radius: 10px;
+      color: white;
+      font-size: 5vw;
+      text-align: center;
+      box-shadow: 0px 4px 10px rgba(0, 0, 0, 0.3);
+      cursor: pointer;
+      display: none;
+    }
+
+    /* Responsive design: shrink the card size as more cards are added */
+    @media (min-width: 300px) {
+      .card {
+        width: 70px;
+        height: 70px;
+      }
+    }
+
+    @media (min-width: 600px) {
+      .card {
+        width: 80px;
+        height: 80px;
+      }
+    }
+
+    @media (min-width: 900px) {
+      .card {
+        width: 100px;
+        height: 100px;
+      }
+    }
+
+  </style>
+</head>
+<body>
+
+  <h1>MemoryCell</h1>
+  <div id="timer">Time left: 30s</div>
+  <div id="level-info">Level: 1</div>
+  <div id="qi-info">IQ: 130</div>
+  <div id="game-board"></div>
+
+  <div id="message" class="message"></div>
+
+  <button id="start-button">Start Game</button>
+  <button id="back-button" style="display: none;">Back to Menu</button>
+
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.13.1/firebase-app.js";
+    import { getFirestore, collection, addDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.13.1/firebase-firestore.js";
+    import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/10.13.1/firebase-auth.js";
+
+    // Firebase configuration
+    const firebaseConfig = {
+      apiKey: "AIzaSyDYtLmrzqTcZXxd5LDGSkJs76VzE0dvtBY",
+      authDomain: "qi-tester-game.firebaseapp.com",
+      projectId: "qi-tester-game",
+      storageBucket: "qi-tester-game.appspot.com",
+      messagingSenderId: "951469093931",
+      appId: "1:951469093931:web:3436fe36657bf90102e66e",
+      measurementId: "G-74QJ79FM9B"
+    };
+
+    // Initialize Firebase
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
+    const auth = getAuth(app);
+
+    // Authenticate anonymously and handle user state
+    signInAnonymously(auth)
+      .then(() => {
+        console.log("Authenticated anonymously.");
+      })
+      .catch((error) => {
+        console.error("Error during anonymous authentication:", error);
+      });
+
+    const gameBoard = document.getElementById('game-board');
+    const startButton = document.getElementById('start-button');
+    const backButton = document.getElementById('back-button');
+    const timerElement = document.getElementById('timer');
+    const levelInfo = document.getElementById('level-info');
+    const qiInfo = document.getElementById('qi-info');
+    const messageDiv = document.getElementById('message');
+    let cards = [];
+    let flippedCards = [];
+    let timer = 30;
+    let timerInterval;
+    let level = 1;
+    let qi = 130;
+    let isInitialViewActive = true;
+    let messageActive = false; // Variabile per controllare se il messaggio è attivo
+
+    // Function to display messages in-game
+    function showMessage(message) {
+      messageDiv.textContent = message;
+      messageDiv.style.display = 'block';
+      messageActive = true; // Blocca il timer e altre azioni finché il messaggio è attivo
+
+      messageDiv.addEventListener('click', () => {
+        messageDiv.style.display = 'none';
+        messageActive = false; // Sblocca il flusso di gioco
+        startInitialCardShow(); // Mostra le carte iniziali
+      });
+    }
+
+    // Inizializza il timer dopo che le carte iniziali sono nascoste
+    function startTimer() {
+      clearInterval(timerInterval);
+      timerInterval = setInterval(() => {
+        if (!messageActive) { // Se non c'è un messaggio attivo
+          timer--;
+          timerElement.textContent = `Time left: ${timer}s`;
+          if (timer <= 0) {
+            endGame('Time up!');
+          }
+        }
+      }, 1000);
+    }
+
+    // Increment the number of pairs every 4 levels
+    function getPairsForLevel(level) {
+      return Math.floor(level / 4) * 2 + 3; // Starts with 3 pairs and increases every 4 levels
+    }
+
+    function setGridLayout(pairs) {
+      const gridSize = Math.ceil(Math.sqrt(pairs * 2));
+      gameBoard.style.gridTemplateColumns = `repeat(${gridSize}, auto)`;
+      gameBoard.style.gridTemplateRows = `repeat(${gridSize}, auto)`;
+    }
+
+    // Create the game board
+    function createBoard(level) {
+      gameBoard.innerHTML = '';
+      cards = [];
+      flippedCards = [];
+      const totalPairs = getPairsForLevel(level);
+      const numbers = [...Array(totalPairs).keys()].concat([...Array(totalPairs).keys()]); // pairs of numbers
+
+      shuffleArray(numbers);
+      setGridLayout(totalPairs);
+
+      numbers.forEach((number) => {
+          const card = document.createElement('div');
+          card.classList.add('card');
+          card.textContent = number;
+          card.dataset.number = number;
+          card.style.color = 'white';  // Colore bianco all'inizio, ma con contorno nero
+          card.addEventListener('click', () => {
+              if (!isInitialViewActive && !messageActive) flipCard(card); // Non permette di cliccare finché il messaggio è attivo
+          });
+          gameBoard.appendChild(card);
+          cards.push(card);
+      });
+    }
+
+    // Mostra le carte iniziali per 2 secondi (dopo la visualizzazione del messaggio)
+    function startInitialCardShow() {
+      isInitialViewActive = true;
+      cards.forEach(card => {
+          card.style.color = 'white'; // Bianco con contorno
+          card.style.textShadow = '-1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000, 1px 1px 0 #000'; // Contorno nero
+      });
+
+      setTimeout(() => {
+          cards.forEach(card => {
+              card.style.color = 'transparent'; // Nasconde i numeri dopo i 2 secondi iniziali
+              card.style.textShadow = 'none'; // Rimuove il contorno quando i numeri sono nascosti
+          });
+          isInitialViewActive = false; // Permette l'interazione dopo la visualizzazione iniziale
+          startTimer(); // Avvia il timer solo dopo che le carte iniziali sono nascoste
+      }, 2000);
+    }
+
+    // Shuffle array
+    function shuffleArray(array) {
+      for (let i = array.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [array[i], array[j]] = [array[j], array[i]];
+      }
+    }
+
+    // Flip a card
+    function flipCard(card) {
+      if (flippedCards.length < 2 && !card.classList.contains('flipped')) {
+        card.classList.add('flipped');
+        card.style.color = 'white';
+        flippedCards.push(card);
+
+        if (flippedCards.length === 2) {
+          checkMatch();
+        }
+      }
+    }
+
+    // Check for a match
+    function checkMatch() {
+      const [card1, card2] = flippedCards;
+      if (card1.dataset.number === card2.dataset.number) {
+        flippedCards = [];
+        if (cards.every(card => card.classList.contains('flipped'))) {
+          setTimeout(() => {
+            levelUp();
+          }, 500);
+        }
+      } else {
+        setTimeout(() => {
+          card1.classList.remove('flipped');
+          card2.classList.remove('flipped');
+          card1.style.color = 'transparent';
+          card2.style.color = 'transparent';
+          flippedCards = [];
+        }, 1000);
+      }
+    }
+
+    // Start the game
+    function startGame() {
+      level = 1;
+      qi = 130;
+      updateLevelInfo();
+      updateQIInfo();
+      timer = 30; // Resetta il timer a 30 secondi all'inizio
+      createBoard(level);
+      startButton.style.display = 'none';
+      backButton.style.display = 'block';
+      showMessage(`Get ready! Level ${level}`); // Mostra il messaggio di inizio livello
+    }
+
+    // Level up
+    function levelUp() {
+      level++;
+      updateLevelInfo();
+      updateQIInfo();
+      timer += 5; // Aggiunge 5 secondi per ogni livello completato
+      createBoard(level);
+      showMessage(`Level ${level - 1} complete! Next level: ${level}`); // Mostra il messaggio di completamento livello
+    }
+
+    // Update level info
+    function updateLevelInfo() {
+      levelInfo.textContent = `Level: ${level}`;
+    }
+
+    // Update QI info (proportional calculation: 130 QI at level 15)
+    function updateQIInfo() {
+      const baseQI = 130;
+      const baseLevel = 15;
+      const minQI = 50;
+      const maxQI = 200;
+
+      qi = (baseQI * level) / baseLevel;
+      if (qi < minQI) qi = minQI;
+      if (qi > maxQI) qi = maxQI;
+
+      qi = Math.round(qi);
+      qiInfo.textContent = `QI: ${qi}`;
+    }
+
+    // End the game
+    function endGame(message) {
+      clearInterval(timerInterval);
+      showMessage(message);
+      saveScoreToFirebase();
+      startButton.style.display = 'block';
+      backButton.style.display = 'block';
+    }
+
+    // Save score to Firebase
+    function saveScoreToFirebase() {
+      const user = auth.currentUser;
+      if (user) {
+        addDoc(collection(db, 'qi_scores'), {
+          userId: user.uid,
+          game: 'MemoryCell',  // Nome del minigioco
+          level: level,
+          qi: Math.round(qi),
+          timestamp: serverTimestamp()
+        })
+        .then(() => {
+          console.log("Score saved successfully.");
+        })
+        .catch((error) => {
+          console.error("Error saving score:", error);
+        });
+      } else {
+        console.error("User not authenticated, cannot save score.");
+      }
+    }
+
+    // Start game button
+    startButton.addEventListener('click', startGame);
+
+    // Back to menu button
+    backButton.addEventListener('click', () => {
+      window.location.href = 'index.html';
+    });
+
+  </script>
+
+</body>
+</html>

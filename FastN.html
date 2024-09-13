@@ -1,0 +1,346 @@
+﻿<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>FastN</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Kanit:wght@400;700&family=Raleway:wght@400;700&display=swap');
+
+    body {
+      font-family: 'Kanit', sans-serif;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      background-color: #111111;
+      margin: 0;
+      color: #ffffff;
+    }
+
+    .game-container {
+      text-align: center;
+      background-color: #1c1c1c;
+      padding: 8vw;
+      border-radius: 20px;
+      box-shadow: 20px 20px 60px #0d0d0d, -20px -20px 60px #292929;
+    }
+
+    .number-display {
+      font-size: 7vw;
+      margin-bottom: 20px;
+      background: linear-gradient(90deg, #00ffff, #ff00ff);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      text-shadow: 0 0 15px rgba(255, 255, 255, 0.1);
+    }
+
+    .options {
+      display: flex;
+      justify-content: center;
+      margin-bottom: 20px;
+    }
+
+    .option {
+      background: linear-gradient(135deg, #00ff00, #00ffff);
+      color: #111111;
+      border: none;
+      padding: 10px 20px;
+      margin: 0 10px;
+      cursor: pointer;
+      font-size: 1.5rem;
+      border-radius: 30px;
+      box-shadow: 8px 8px 16px #0d0d0d, -8px -8px 16px #2a2a2a;
+      transition: background-color 0.3s ease, box-shadow 0.3s ease;
+    }
+
+    .option:hover {
+      background: linear-gradient(135deg, #ff00ff, #00ffff);
+      box-shadow: 5px 5px 15px #0d0d0d, -5px -5px 15px #3a3a3a;
+    }
+
+    .timer {
+      font-size: 7vw;
+      margin-bottom: 10px;
+    }
+
+    .message {
+      font-size: 5vw;
+      color: green;
+      display: none;
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      background-color: rgba(0, 0, 0, 0.8);
+      padding: 20px;
+      border-radius: 10px;
+      text-align: center;
+      cursor: pointer;
+    }
+
+    .game-over {
+      font-size: 7vw;
+      color: red;
+      display: none;
+    }
+
+    .start-button, .menu-button {
+      background: linear-gradient(135deg, #00ff00, #00ffff);
+      color: #111111;
+      border: none;
+      padding: 10px 20px;
+      border-radius: 30px;
+      font-size: 7vw;
+      cursor: pointer;
+      margin-top: 20px;
+      box-shadow: 8px 8px 16px #0d0d0d, -8px -8px 16px #2a2a2a;
+      transition: background-color 0.3s ease, box-shadow 0.3s ease;
+    }
+
+    .start-button:hover, .menu-button:hover {
+      background: linear-gradient(135deg, #ff00ff, #00ffff);
+      box-shadow: 5px 5px 15px #0d0d0d, -5px -5px 15px #3a3a3a;
+    }
+
+    .level, .qi {
+      font-size: 7vw;
+      margin-bottom: 20px;
+    }
+
+    .option.disabled {
+      background-color: #6c757d;
+      cursor: not-allowed;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="game-container">
+    <div class="level" id="level">Level: 1</div>
+    <div class="timer" id="timer">Time left: 5s</div>
+    <div class="number-display" id="number-display">0</div>
+    <div class="options">
+      <button class="option" id="option1">0</button>
+      <button class="option" id="option2">0</button>
+      <button class="option" id="option3">0</button>
+    </div>
+    <div class="message" id="message"></div>
+    <div class="qi" id="qi">IQ: 0</div>
+    <div class="game-over" id="game-over">Game Over!</div>
+    <button class="start-button" id="start-button">Start New Game</button>
+    <button class="menu-button" id="menu-button">Back to Menu</button>
+  </div>
+
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.13.1/firebase-app.js";
+    import { getFirestore, collection, addDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.13.1/firebase-firestore.js";
+    import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/10.13.1/firebase-auth.js";
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyDYtLmrzqTcZXxd5LDGSkJs76VzE0dvtBY",
+      authDomain: "qi-tester-game.firebaseapp.com",
+      databaseURL: "https://qi-tester-game-default-rtdb.firebaseio.com",
+      projectId: "qi-tester-game",
+      storageBucket: "qi-tester-game.appspot.com",
+      messagingSenderId: "951469093931",
+      appId: "1:951469093931:web:3436fe36657bf90102e66e",
+      measurementId: "G-74QJ79FM9B"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
+    const auth = getAuth(app);
+
+    signInAnonymously(auth)
+      .then(() => {
+        console.log("Autenticazione anonima riuscita.");
+      })
+      .catch((error) => {
+        console.error("Errore di autenticazione:", error);
+      });
+
+    const numberDisplay = document.getElementById('number-display');
+    const timerDisplay = document.getElementById('timer');
+    const messageDisplay = document.getElementById('message');
+    const gameOverDisplay = document.getElementById('game-over');
+    const startButton = document.getElementById('start-button');
+    const menuButton = document.getElementById('menu-button');
+    const levelDisplay = document.getElementById('level');
+    const qiDisplay = document.getElementById('qi');
+    const options = [
+      document.getElementById('option1'),
+      document.getElementById('option2'),
+      document.getElementById('option3')
+    ];
+
+    let currentResult = 0;
+    let correctAnswer = 0;
+    let timer = 5;
+    let timerInterval;
+    let level = 1;
+    let correctAnswersCount = 0;
+    let qi = 0;
+
+    function generateRandomNumber() {
+      return Math.floor(Math.random() * 10) + 1;
+    }
+
+    function startGame() {
+      resetGame();
+      nextRound();
+      startTimer();
+    }
+
+    function resetGame() {
+      currentResult = 0;
+      timer = 5;
+      level = 1;
+      correctAnswersCount = 0;
+      qi = 0;
+      timerDisplay.textContent = `Time left: ${timer}s`;
+      levelDisplay.textContent = `Level: ${level}`;
+      qiDisplay.textContent = `IQ: ${qi}`;
+      messageDisplay.style.display = 'none'; 
+      gameOverDisplay.style.display = 'none';
+      startButton.style.display = 'none';
+      menuButton.style.display = 'none';
+      options.forEach(option => {
+        option.classList.remove('disabled');
+        option.onclick = () => checkAnswer(Number(option.textContent));
+      });
+    }
+
+    function startTimer() {
+      clearInterval(timerInterval);
+      timerInterval = setInterval(() => {
+        timer--;
+        timerDisplay.textContent = `Time left: ${timer}s`;
+
+        if (timer <= 0) {
+          endGame();
+        }
+      }, 1000);
+    }
+
+    function nextRound() {
+      let num1 = generateRandomNumber();
+      let num2 = generateRandomNumber();
+      let operation = '+';
+
+      if (level > 5 && level <= 15) {
+        if (num1 < num2) {
+          [num1, num2] = [num2, num1];
+        }
+        operation = '-';
+      } else if (level > 15 && level <= 30) {
+        operation = ['+', '-', '*'][Math.floor(Math.random() * 3)];
+      } else if (level > 30) {
+        operation = ['+', '-', '*', '/'][Math.floor(Math.random() * 4)];
+        if (operation === '/') {
+          num2 = Math.min(num2, num1);
+          num1 = num1 * num2;
+        }
+      }
+
+      currentResult = calculateResult(num1, num2, operation);
+
+      numberDisplay.textContent = `${num1} ${operation} ${num2}`;
+
+      correctAnswer = currentResult;
+      const wrongAnswer1 = correctAnswer + Math.floor(Math.random() * 10) - 5;
+      const wrongAnswer2 = correctAnswer + Math.floor(Math.random() * 10) - 5;
+
+      const answers = [correctAnswer, wrongAnswer1, wrongAnswer2].sort(() => Math.random() - 0.5);
+
+      options.forEach((option, index) => {
+        option.textContent = answers[index];
+        option.onclick = () => checkAnswer(answers[index]);
+      });
+    }
+
+    function calculateResult(num1, num2, operation) {
+      switch (operation) {
+        case '+': return num1 + num2;
+        case '-': return num1 - num2;
+        case '*': return num1 * num2;
+        case '/': return num1 / num2;
+      }
+    }
+
+    function updateQI() {
+      const minQI = 50;
+      const maxQI = 200;
+      let newQI = (correctAnswersCount * 130) / 50;
+      newQI = Math.min(Math.max(newQI, minQI), maxQI);
+      qi = Math.round(newQI);
+      qiDisplay.textContent = `IQ: ${qi}`;
+    }
+
+    function checkAnswer(selectedAnswer) {
+      if (selectedAnswer === correctAnswer) {
+        clearInterval(timerInterval); // Stop the timer
+        timer += 2; // Add 2 seconds for correct answer
+        showMessage('Right!', 'green');
+        correctAnswersCount++;
+        updateQI();
+        level++;
+        levelDisplay.textContent = `Level: ${level}`;
+      } else {
+        showMessage('Wrong!', 'red');
+        endGame();
+      }
+    }
+
+    function showMessage(text, color) {
+      messageDisplay.textContent = text;
+      messageDisplay.style.color = color;
+      messageDisplay.style.display = 'block';
+      messageDisplay.onclick = () => {
+        messageDisplay.style.display = 'none';
+        if (text === 'Right!') {
+          startTimer(); // Restart the timer after closing the message
+          nextRound();
+        }
+      };
+    }
+
+    function endGame() {
+      clearInterval(timerInterval);
+      numberDisplay.textContent = '0';
+      gameOverDisplay.style.display = 'block';
+      startButton.style.display = 'block';
+      menuButton.style.display = 'block';
+      options.forEach(option => option.classList.add('disabled'));
+      saveScore();
+    }
+
+    function saveScore() {
+      const user = auth.currentUser;
+      if (user) {
+        addDoc(collection(db, 'qi_scores'), {
+          userId: user.uid,
+          game: 'FastN',
+          level: level,
+          qi: Math.round(qi),
+          timestamp: serverTimestamp()
+        })
+        .then(() => {
+          console.log("Punteggio salvato correttamente.");
+        })
+        .catch((error) => {
+          console.error("Errore durante il salvataggio del punteggio:", error);
+        });
+      }
+    }
+
+    function goToHome() {
+      window.location.href = 'index.html';
+    }
+
+    startButton.addEventListener('click', startGame);
+    menuButton.addEventListener('click', goToHome);
+  </script>
+
+</body>
+</html>
