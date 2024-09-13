@@ -271,7 +271,7 @@
     function updateQI() {
       const minQI = 50;
       const maxQI = 200;
-      let newQI = (correctAnswersCount * 130) / 50;
+      let newQI = (correctAnswersCount * 130) / 30;
       newQI = Math.min(Math.max(newQI, minQI), maxQI);
       qi = Math.round(newQI);
       qiDisplay.textContent = `IQ: ${qi}`;
