@@ -12,16 +12,24 @@
             text-align: center;
             background-color: #111111;
             color: #ffffff;
-            position: relative;
+            margin: 0;
+            padding: 0;
+            overflow: hidden; /* Evita lo scrolling */
+            
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
         }
 
         #game-container {
-            margin: 5vw auto;
-            padding: 5vw;
-            background-color: #1c1c1c;
-            border-radius: 2vw;
-            box-shadow: 20px 20px 60px #0d0d0d, -20px -20px 60px #292929;
-            max-width: 100vw;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            padding: 2vh;
+            width: 100vw;
+            height: 100vh; /* Occupa tutta l'altezza dello schermo */
+            box-sizing: border-box;
         }
 
         #color-name {
@@ -58,23 +66,24 @@
         }
 
         #back-to-index {
-            margin-top: 4vw; /* Distanza ulteriore per il bottone "Back to Menu" */
+            margin-top: 4vw;
         }
 
         #button-container {
-            display: flex;
-            grid-template-columns: repeat(3, 1fr); /* 3 colonne su schermi grandi */
-            flex-wrap: wrap;
             justify-content: center;
-            gap: 2vw;
-            max-width: 150vw;
+            display: grid;
+            grid-template-columns: repeat(3, 1fr); /* 3 colonne uguali */
+            gap: 4vw; /* Spazio tra i pulsanti */
+            max-width: 100vw;
             margin: 0 auto;
         }
 
         .color-button {
-            width: 12vw;
-            height: 12vw;
-            margin: 3vw;
+            justify-content: center;
+            flex: 1 1 18vw; /* Flex-grow, flex-shrink, e dimensione di base */
+            width: 18vw;
+            height: 18vw;
+            margin: 4vw;
             border-radius: 50%;
             border: 2px solid #aaa;
             box-shadow: inset 0 0 5px rgba(0, 0, 0, 0.2);
